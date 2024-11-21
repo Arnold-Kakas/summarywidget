@@ -67,6 +67,38 @@ HTMLWidgets.widget({
     case 'max':
         value = Math.max(...values);
         break;
+    case 'rate':
+        // Check if selector and numerator are provided
+        if (!x.settings.selector || !x.settings.numerator) {
+            console.error("For 'rate', 'selector' and 'numerator' must be specified.");
+            return;
+        }
+
+        // Extract data filtered by Crosstalk
+        const filteredData = crosstalk.group(x.settings.crosstalk_group).filteredKeys();
+        const selectedData = values.filter(val => filteredData.includes(val[x.settings.crosstalk_key]));
+
+        // Filter numerator and denominator based on the selector and specified categories
+        const numeratorData = selectedData.filter(val =>
+            x.settings.numerator.includes(val[x.settings.selector])
+        );
+
+        const denominatorData = x.settings.denominator
+            ? selectedData.filter(val => x.settings.denominator.includes(val[x.settings.selector]))
+            : selectedData; // Use full filtered data if denominator is not specified
+
+        // Calculate numerator and denominator unique counts
+        const numeratorUnique = new Set(numeratorData.map(val => val.id)).size;
+        const denominatorUnique = new Set(denominatorData.map(val => val.id)).size;
+
+        // Calculate the rate
+        if (denominatorUnique > 0) {
+            value = (numeratorUnique / denominatorUnique) * 100; // Conversion rate as percentage
+        } else {
+            console.error("Denominator is zero or undefined. Cannot calculate rate.");
+            value = 0;
+        }
+        break;
     default:
         console.error('Invalid statistic specified:', x.settings.statistic);
         return;
@@ -91,6 +123,11 @@ if (x.settings.digits !== null) {
 // Apply the big mark formatting if specified
 if (x.settings.big_mark) {
     value = numberWithSep(value, x.settings.big_mark);
+}
+
+// Apply percentage formatting if specified
+if (x.settings.statistic === 'rate') {
+    value = `${value}%`; // Add percentage symbol
 }
 
           el.innerText = value;
