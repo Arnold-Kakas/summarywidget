@@ -50,28 +50,32 @@ HTMLWidgets.widget({
             break;
 
           case 'rate':
-            // Ensure selector and numerator are provided
+
             if (!x.settings.selector || !x.settings.numerator) {
-              console.error("For 'rate', 'selector' and 'numerator' must be specified.");
-              return;
+                console.error("For 'rate', 'selector' and 'numerator' must be specified.");
+                return;
             }
-
-            // Filter numerator and denominator
+            const rateType = x.settings.rate_type || "count_rate";
+        
             const numeratorData = data.filter(val =>
-              x.settings.numerator.includes(val[x.settings.selector])
+                x.settings.numerator.includes(val.selector)
             );
-
+        
             const denominatorData = x.settings.denominator
-              ? data.filter(val => x.settings.denominator.includes(val[x.settings.selector]))
-              : data;
-
-            // Calculate unique counts
-            const numeratorUnique = new Set(numeratorData.map(val => val.id)).size;
-            const denominatorUnique = new Set(denominatorData.map(val => val.id)).size;
-
-            // Calculate rate
-            value = denominatorUnique > 0 ? (numeratorUnique / denominatorUnique) * 100 : 0;
+                ? data.filter(val => x.settings.denominator.includes(val.selector))
+                : data; // Use full dataset if denominator not specified
+        
+            if (rateType === "count_rate") {
+                const numeratorUnique = new Set(numeratorData.map(val => val.id)).size;
+                const denominatorUnique = new Set(denominatorData.map(val => val.id)).size;
+                value = denominatorUnique > 0 ? (numeratorUnique / denominatorUnique) * 100 : 0;
+            } else if (rateType === "numeric_rate") {
+                const numeratorSum = numeratorData.reduce((sum, val) => sum + val.id, 0);
+                const denominatorSum = denominatorData.reduce((sum, val) => sum + val.id, 0);
+                value = denominatorSum > 0 ? (numeratorSum / denominatorSum) * 100 : 0;
+            }
             break;
+
 
           default:
             console.error('Invalid statistic specified:', x.settings.statistic);
