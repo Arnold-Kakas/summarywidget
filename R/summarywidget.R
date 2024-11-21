@@ -20,35 +20,27 @@
 #' @export
 #' @seealso \url{https://kent37.github.io/summarywidget}
 summarywidget <- function(data,
-                          statistic = c("count", "sum", "mean", "min", "max", "rate", "distinct_count", "duplicates"), 
-                          column = NULL,
-                          selection = NULL, 
-                          numerator = NULL, 
-                          denominator = NULL,
-                          selector = NULL,
-                          digits = 0,
-                          big_mark = " ",
-                          width = NULL, 
-                          height = NULL, 
-                          elementId = NULL) {
-  
-  # Ensure valid inputs for "rate"
-  if (statistic == "rate" && is.null(selector)) {
-    stop("For 'rate', the 'selector' argument must be provided.")
-  }
-  
-  # Handle Crosstalk compatibility
+                          statistic=c("count", "sum", "mean", "min", "max", "distinct_count", "duplicates"), column = NULL,
+                          selection=NULL, digits=0, big_mark = " ",
+                          width=NULL, height=NULL, elementId = NULL) {
+
   if (crosstalk::is.SharedData(data)) {
+    # Using Crosstalk
     key <- data$key()
     group <- data$groupName()
     data <- data$origData()
   } else {
+    # Not using Crosstalk
+    warning("summarywidget works best when data is an instance of crosstalk::SharedData.")
     key <- NULL
     group <- NULL
   }
 
-  # Check if selection is provided and apply it
+  statistic <- match.arg(statistic)
+
+  # If selection is given, apply it
   if (!is.null(selection)) {
+    # Evaluate any formula
     if (inherits(selection, 'formula')) {
       if (length(selection) != 2L)
         stop("Unexpected two-sided formula: ", deparse(selection))
@@ -61,44 +53,30 @@ summarywidget <- function(data,
     key = key[selection]
   }
 
-  # Ensure column is valid
-  if (is.null(column) && !(statistic %in% c('count', 'distinct_count', 'duplicates'))) {
-    stop("Column must be provided for ", statistic, " statistic.")
+  # We just need one column, either the row.names or the specified column.
+  if (is.null(column)) {
+    if (statistic != 'count' | statistic != 'distinct_count' | statistic != 'duplicates')
+      stop("Column must be provided with ", statistic, " statistic.")
+    data = row.names(data)
+  } else {
+    if (!(column %in% colnames(data)))
+      stop("No ", column, " column in data.")
+    data = data[[column]]
   }
-  if (!is.null(column) && !(column %in% colnames(data))) {
-    stop("No ", column, " column in data.")
-  }
 
-  # Prepare the data for JavaScript
-if (!is.null(column) && !is.null(selector)) {
-  # Both column and selector are specified
-  js_data <- data.frame(id = data[[column]], selector = data[[selector]])
-} else if (!is.null(column)) {
-  # Only column is specified
-  js_data <- data.frame(id = data[[column]])
-} else if (!is.null(selector)) {
-  # Only selector is specified
-  js_data <- data.frame(selector = data[[selector]])
-} else {
-  # Neither column nor selector specified (e.g., count statistic)
-  js_data <- data.frame(id = row.names(data))
-}
-
-
+  # forward options using x
   x = list(
-    data = js_data,
+    data = data,
     settings = list(
       statistic = statistic,
       digits = digits,
       big_mark = big_mark,
-      numerator = numerator,
-      denominator = denominator,
-      selector = selector,
       crosstalk_key = key,
       crosstalk_group = group
     )
   )
 
+  # create widget
   htmlwidgets::createWidget(
     name = 'summarywidget',
     x,
