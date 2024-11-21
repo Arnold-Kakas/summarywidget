@@ -71,6 +71,16 @@ HTMLWidgets.widget({
         console.error('Invalid statistic specified:', x.settings.statistic);
         return;
 }
+
+function numberWithSep(x, bigMark = ",") {
+    x = x.toString();
+    var pattern = /(-?\d+)(\d{3})/;
+    while (pattern.test(x)) {
+        x = x.replace(pattern, `$1${bigMark}$2`);
+    }
+    return x;
+}
+
 // Apply the digits formatting if specified
 if (x.settings.digits !== null) {
     value = parseFloat(value).toFixed(x.settings.digits);
@@ -78,7 +88,7 @@ if (x.settings.digits !== null) {
 
 // Apply the big mark formatting if specified
 if (x.settings.big_mark) {
-    value = value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, x.settings.big_mark);
+    value = numberWithSep(value, x.settings.big_mark);
 }
 
           el.innerText = value;
