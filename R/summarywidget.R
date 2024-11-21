@@ -70,6 +70,7 @@ summarywidget <- function(data,
     settings = list(
       statistic = statistic,
       digits = digits,
+      big_mark = big_mark,
       crosstalk_key = key,
       crosstalk_group = group
     )
