@@ -126,9 +126,9 @@ if (x.settings.big_mark) {
 }
 
 // Apply percentage formatting if specified
-/*if (x.settings.statistic === 'rate') {
+if (x.settings.statistic === 'rate') {
     value = `${value}%`; // Add percentage symbol
-}*/
+}
 
           el.innerText = value;
        };
