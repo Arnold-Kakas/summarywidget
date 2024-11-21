@@ -69,11 +69,21 @@ summarywidget <- function(data,
     stop("No ", column, " column in data.")
   }
 
-  # Prepare data for JavaScript
-  js_data <- data
-  if (!is.null(column)) {
-    js_data <- data[[column]]
-  }
+  # Prepare the data for JavaScript
+if (!is.null(column) && !is.null(selector)) {
+  # Both column and selector are specified
+  js_data <- data.frame(id = data[[column]], selector = data[[selector]])
+} else if (!is.null(column)) {
+  # Only column is specified
+  js_data <- data.frame(id = data[[column]])
+} else if (!is.null(selector)) {
+  # Only selector is specified
+  js_data <- data.frame(selector = data[[selector]])
+} else {
+  # Neither column nor selector specified (e.g., count statistic)
+  js_data <- data.frame(id = row.names(data))
+}
+
 
   x = list(
     data = js_data,
