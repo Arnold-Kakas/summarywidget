@@ -73,7 +73,9 @@ HTMLWidgets.widget({
 }
 
 function numberWithSep(x, bigMark = ",") {
-    x = x.toString();
+    if (typeof x !== "string") {
+        x = x.toString();
+    }
     var pattern = /(-?\d+)(\d{3})/;
     while (pattern.test(x)) {
         x = x.replace(pattern, `$1${bigMark}$2`);
