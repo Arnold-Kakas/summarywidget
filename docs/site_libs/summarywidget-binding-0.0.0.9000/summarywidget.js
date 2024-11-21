@@ -4,105 +4,128 @@ HTMLWidgets.widget({
 
   factory: function(el, width, height) {
 
+    // Filter obj, returning a new obj containing only
+    // values with keys in keys.
+    var filterKeys = function(obj, keys) {
+      var result = {};
+      keys.forEach(function(k) {
+        if (obj.hasOwnProperty(k))
+          result[k]=obj[k];});
+      return result;
+    };
+
     return {
       renderValue: function(x) {
 
-        var data = x.data; // Use provided data directly
-        var value = 0;
-
-        // Calculate statistics
-        switch (x.settings.statistic) {
-          case 'count':
-            value = data.length;
-            break;
-
-          case 'sum':
-            value = data.reduce((acc, val) => acc + val, 0);
-            break;
-
-          case 'mean':
-            value = data.reduce((acc, val) => acc + val, 0) / data.length;
-            break;
-
-          case 'distinct_count':
-            value = new Set(data).size;
-            break;
-
-          case 'duplicates':
-            const uniqueSet = new Set();
-            const duplicatesSet = new Set();
-            data.forEach(val => {
-              if (uniqueSet.has(val)) {
-                duplicatesSet.add(val);
-              } else {
-                uniqueSet.add(val);
-              }
-            });
-            value = duplicatesSet.size;
-            break;
-
-          case 'min':
-            value = Math.min(...data);
-            break;
-
-          case 'max':
-            value = Math.max(...data);
-            break;
-
-          case 'rate':
-
-            if (!x.settings.selector || !x.settings.numerator) {
-                console.error("For 'rate', 'selector' and 'numerator' must be specified.");
-                return;
-            }
-            const rateType = x.settings.rate_type || "count_rate";
-        
-            const numeratorData = data.filter(val =>
-                x.settings.numerator.includes(val.selector)
-            );
-        
-            const denominatorData = x.settings.denominator
-                ? data.filter(val => x.settings.denominator.includes(val.selector))
-                : data; // Use full dataset if denominator not specified
-        
-            if (rateType === "count_rate") {
-                const numeratorUnique = new Set(numeratorData.map(val => val.id)).size;
-                const denominatorUnique = new Set(denominatorData.map(val => val.id)).size;
-                value = denominatorUnique > 0 ? (numeratorUnique / denominatorUnique) * 100 : 0;
-            } else if (rateType === "numeric_rate") {
-                const numeratorSum = numeratorData.reduce((sum, val) => sum + val.id, 0);
-                const denominatorSum = denominatorData.reduce((sum, val) => sum + val.id, 0);
-                value = denominatorSum > 0 ? (numeratorSum / denominatorSum) * 100 : 0;
-            }
-            break;
-
-
-          default:
-            console.error('Invalid statistic specified:', x.settings.statistic);
-            return;
+        // Make a data object with keys so we can easily update the selection
+        var data = {};
+        var i;
+        if (x.settings.crosstalk_key === null) {
+          for (i=0; i<x.data.length; i++) {
+            data[i] = x.data[i];
+          }
+        } else {
+          for (i=0; i<x.settings.crosstalk_key.length; i++) {
+            data[x.settings.crosstalk_key[i]] = x.data[i];
+          }
         }
 
-        // Formatting options
-        const numberWithSep = (num, sep = ",") => {
-          return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, sep);
-        };
+        // Update the display to show the values in d
+        var update = function(d) {
+          // Get a simple vector. Don't use Object.values(), RStudio doesn't seem to support it.
+          var values = [];
+          for (var key in d) {
+            if (d.hasOwnProperty(key)) { values.push(d[key]);}
+          }
 
-        if (x.settings.digits !== null) {
-          value = parseFloat(value).toFixed(x.settings.digits);
-        }
-        if (x.settings.big_mark) {
-          value = numberWithSep(value, x.settings.big_mark);
-        }
-        if (x.settings.statistic === 'rate') {
-          value = `${value}%`;
-        }
+          var value = 0;
+          switch (x.settings.statistic) {
+    case 'count':
+        value = values.length;
+        break;
+    case 'sum':
+        value = values.reduce(function(acc, val) { return acc + val; }, 0);
+        break;
+    case 'mean':
+        value = values.reduce(function(acc, val) { return acc + val; }, 0) / values.length;
+        break;
+    case 'distinct_count':
+        value = [...new Set(values)].length;
+        break;
+    case 'duplicates':
+        const uniqueValues = new Set();
+        const duplicates = new Set();
+        values.forEach(val => {
+            if (uniqueValues.has(val)) duplicates.add(val);
+            else uniqueValues.add(val);
+        });
+        value = duplicates.size;
+        break;
+    case 'min':
+        value = Math.min(...values);
+        break;
+    case 'max':
+        value = Math.max(...values);
+        break;
+    default:
+        console.error('Invalid statistic specified:', x.settings.statistic);
+        return;
+}
 
-        el.innerText = value;
+function numberWithSep(x, bigMark = ",") {
+    if (typeof x !== "string") {
+        x = x.toString();
+    }
+    var pattern = /(-?\d+)(\d{3})/;
+    while (pattern.test(x)) {
+        x = x.replace(pattern, `$1${bigMark}$2`);
+    }
+    return x;
+}
+
+// Apply the digits formatting if specified
+if (x.settings.digits !== null) {
+    value = parseFloat(value).toFixed(x.settings.digits);
+}
+
+// Apply the big mark formatting if specified
+if (x.settings.big_mark) {
+    value = numberWithSep(value, x.settings.big_mark);
+}
+
+          el.innerText = value;
+       };
+
+       // Set up to receive crosstalk filter and selection events
+       var ct_filter = new crosstalk.FilterHandle();
+       ct_filter.setGroup(x.settings.crosstalk_group);
+       ct_filter.on("change", function(e) {
+         if (e.value) {
+           update(filterKeys(data, e.value));
+         } else {
+           update(data);
+         }
+       });
+
+       var ct_sel = new crosstalk.SelectionHandle();
+       ct_sel.setGroup(x.settings.crosstalk_group);
+       ct_sel.on("change", function(e) {
+         if (e.value && e.value.length) {
+           update(filterKeys(data, e.value));
+         } else {
+           update(data);
+         }
+       });
+
+       update(data);
       },
 
       resize: function(width, height) {
-        // Handle resizing if necessary
+
+        // TODO: code to re-render the widget with a new size
+
       }
+
     };
   }
 });
