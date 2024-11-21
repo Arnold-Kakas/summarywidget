@@ -20,8 +20,8 @@
 #' @export
 #' @seealso \url{https://kent37.github.io/summarywidget}
 summarywidget <- function(data,
-                          statistic=c("count", "sum", "mean"), column = NULL,
-                          selection=NULL, digits=0,
+                          statistic=c("count", "sum", "mean", "min", "max", "distinct_count", "duplicates"), column = NULL,
+                          selection=NULL, digits=0, big_mark = " ",
                           width=NULL, height=NULL, elementId = NULL) {
 
   if (crosstalk::is.SharedData(data)) {
@@ -55,7 +55,7 @@ summarywidget <- function(data,
 
   # We just need one column, either the row.names or the specified column.
   if (is.null(column)) {
-    if (statistic != 'count')
+    if (statistic != 'count' | statistic != 'distinct_count' | statistic != 'duplicates')
       stop("Column must be provided with ", statistic, " statistic.")
     data = row.names(data)
   } else {
