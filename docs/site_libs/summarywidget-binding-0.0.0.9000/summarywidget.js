@@ -40,18 +40,47 @@ HTMLWidgets.widget({
 
           var value = 0;
           switch (x.settings.statistic) {
-            case 'count':
-              value = values.length;
-              break;
-            case 'sum':
-              value = values.reduce(function(acc, val) {return acc + val;}, 0);
-              break;
-            case 'mean':
-              value = values.reduce(function(acc, val) {return acc + val;}, 0) / values.length;
-              break;
-          }
+    case 'count':
+        value = values.length;
+        break;
+    case 'sum':
+        value = values.reduce(function(acc, val) { return acc + val; }, 0);
+        break;
+    case 'mean':
+        value = values.reduce(function(acc, val) { return acc + val; }, 0) / values.length;
+        break;
+    case 'distinct_count':
+        value = [...new Set(values)].length;
+        break;
+    case 'duplicates':
+        const uniqueValues = new Set();
+        const duplicates = new Set();
+        values.forEach(val => {
+            if (uniqueValues.has(val)) duplicates.add(val);
+            else uniqueValues.add(val);
+        });
+        value = duplicates.size;
+        break;
+    case 'min':
+        value = Math.min(...values);
+        break;
+    case 'max':
+        value = Math.max(...values);
+        break;
+    default:
+        console.error('Invalid statistic specified:', x.settings.statistic);
+        return;
+}
+// Apply the digits formatting if specified
+if (x.settings.digits !== null) {
+    value = parseFloat(value).toFixed(x.settings.digits);
+}
 
-          if (x.settings.digits !== null) value = value.toFixed(x.settings.digits);
+// Apply the big mark formatting if specified
+if (x.settings.big_mark) {
+    value = value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, x.settings.big_mark);
+}
+
           el.innerText = value;
        };
 
