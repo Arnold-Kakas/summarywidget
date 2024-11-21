@@ -20,10 +20,21 @@
 #' @export
 #' @seealso \url{https://kent37.github.io/summarywidget}
 summarywidget <- function(data,
-                          statistic=c("count", "sum", "mean", "min", "max", "distinct_count", "duplicates"), column = NULL,
-                          selection=NULL, digits=0, big_mark = " ",
-                          width=NULL, height=NULL, elementId = NULL) {
-
+                          statistic = c("count", "sum", "mean", "min", "max", "rate", "distinct_count", "duplicates"), 
+                          column = NULL,
+                          selection = NULL, 
+                          numerator = NULL, 
+                          denominator = NULL,
+                          digits = 0,
+                          big_mark = " ",
+                          width = NULL, 
+                          height = NULL, 
+                          elementId = NULL) {
+  
+  if (statistic == "rate" && is.null(selector)) {
+    stop("For 'rate', the 'selector' argument must be provided.")
+  }
+  
   if (crosstalk::is.SharedData(data)) {
     # Using Crosstalk
     key <- data$key()
@@ -71,6 +82,9 @@ summarywidget <- function(data,
       statistic = statistic,
       digits = digits,
       big_mark = big_mark,
+      numerator = numerator,
+      denominator = denominator,
+      selector = selector,
       crosstalk_key = key,
       crosstalk_group = group
     )
