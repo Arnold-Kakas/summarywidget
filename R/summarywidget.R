@@ -32,27 +32,23 @@ summarywidget <- function(data,
                           height = NULL, 
                           elementId = NULL) {
   
+  # Ensure valid inputs for "rate"
   if (statistic == "rate" && is.null(selector)) {
     stop("For 'rate', the 'selector' argument must be provided.")
   }
   
+  # Handle Crosstalk compatibility
   if (crosstalk::is.SharedData(data)) {
-    # Using Crosstalk
     key <- data$key()
     group <- data$groupName()
     data <- data$origData()
   } else {
-    # Not using Crosstalk
-    warning("summarywidget works best when data is an instance of crosstalk::SharedData.")
     key <- NULL
     group <- NULL
   }
 
-  statistic <- match.arg(statistic)
-
-  # If selection is given, apply it
+  # Check if selection is provided and apply it
   if (!is.null(selection)) {
-    # Evaluate any formula
     if (inherits(selection, 'formula')) {
       if (length(selection) != 2L)
         stop("Unexpected two-sided formula: ", deparse(selection))
@@ -65,20 +61,22 @@ summarywidget <- function(data,
     key = key[selection]
   }
 
-  # We just need one column, either the row.names or the specified column.
-  if (is.null(column)) {
-    if (statistic != 'count' | statistic != 'distinct_count' | statistic != 'duplicates')
-      stop("Column must be provided with ", statistic, " statistic.")
-    data = row.names(data)
-  } else {
-    if (!(column %in% colnames(data)))
-      stop("No ", column, " column in data.")
-    data = data[[column]]
+  # Ensure column is valid
+  if (is.null(column) && !(statistic %in% c('count', 'distinct_count', 'duplicates'))) {
+    stop("Column must be provided for ", statistic, " statistic.")
+  }
+  if (!is.null(column) && !(column %in% colnames(data))) {
+    stop("No ", column, " column in data.")
   }
 
-  # forward options using x
+  # Prepare data for JavaScript
+  js_data <- data
+  if (!is.null(column)) {
+    js_data <- data[[column]]
+  }
+
   x = list(
-    data = data,
+    data = js_data,
     settings = list(
       statistic = statistic,
       digits = digits,
@@ -91,7 +89,6 @@ summarywidget <- function(data,
     )
   )
 
-  # create widget
   htmlwidgets::createWidget(
     name = 'summarywidget',
     x,
