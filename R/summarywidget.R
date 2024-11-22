@@ -183,7 +183,8 @@ summarywidget <- function(data,
   width = width,
   height = height,
   package = 'summarywidget',
-  elementId = elementId
+  elementId = elementId,
+  dependencies = crosstalk::crosstalkLibs()
 )
 }
 
