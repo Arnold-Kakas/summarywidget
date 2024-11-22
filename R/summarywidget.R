@@ -30,6 +30,38 @@
 #' @import htmlwidgets
 #'
 #' @export
+#' Show a single summary statistic in a widget
+#'
+#' A `summarywidget` displays a single statistic derived from a linked table.
+#' Its primary use is with the `crosstalk` package. Used with `crosstalk`,
+#' a `summarywidget` displays a value which updates as the data selection
+#' changes.
+#'
+#' @param data Data to summarize, normally an instance of [crosstalk::SharedData].
+#' @param statistic The statistic to compute.
+#' @param column For `sum`, `mean`, `min`, `max` statistics, the column of `data` to summarize.
+#' Not used for `count`, `distinct_count`, `duplicates`, or `count_rate`, `numeric_rate` statistics.
+#' @param selection Expression to select a fixed subset of `data`. May be
+#' a logical vector or a one-sided formula that evaluates to a logical vector.
+#' If used, the `key` given to [crosstalk::SharedData] must be a fixed column (not row numbers).
+#' @param numerator_selection Expression to select the numerator subset of `data` for rate calculations.
+#' @param denominator_selection Expression to select the denominator subset of `data` for rate calculations.
+#' If NULL, the entire data is used as the denominator.
+#' @param numerator_column Column to use for the numerator in `numeric_rate` statistic.
+#' @param denominator_column Column to use for the denominator in `numeric_rate` statistic.
+#' If NULL, `numerator_column` is used.
+#' @param digits Number of decimal places to display, or NULL to display full precision.
+#' @param big_mark Character used as thousands separator.
+#' @param prefix String to prepend to the value. Default is NULL.
+#' @param suffix String to append to the value. Default is NULL. Not applied for rate statistics.
+#' @param width Width of the widget.
+#' @param height Height of the widget.
+#' @param elementId Element ID for the widget.
+#'
+#' @import crosstalk
+#' @import htmlwidgets
+#'
+#' @export
 summarywidget <- function(data,
                           statistic = c("count", "sum", "mean", "min", "max", "distinct_count", "duplicates", "count_rate", "numeric_rate"),
                           column = NULL,
@@ -70,7 +102,9 @@ summarywidget <- function(data,
     if (!is.logical(selection))
       stop("Selection must contain TRUE/FALSE values.")
     data <- data[selection, ]
-    key <- key[selection]
+    if (!is.null(key)) {
+      key <- key[selection]
+    }
   }
 
   # We need to handle numerator and denominator selections
@@ -79,7 +113,7 @@ summarywidget <- function(data,
 
   # Prepare the main data value
   if (is.null(column)) {
-    if (statistic %in% c('sum', 'mean', 'min', 'max', 'numeric_rate'))
+    if (statistic %in% c('sum', 'mean', 'min', 'max'))  # Removed 'numeric_rate' from here
       stop("Column must be provided with ", statistic, " statistic.")
     data_value <- seq_len(nrow(data))  # Use row indices for count-based statistics
   } else {
@@ -101,6 +135,9 @@ summarywidget <- function(data,
       }
       if (!is.logical(numerator_flag))
         stop("numerator_selection must contain TRUE/FALSE values.")
+      # Handle NA values in numerator_flag
+      numerator_flag <- as.logical(numerator_flag)
+      numerator_flag[is.na(numerator_flag)] <- FALSE
     } else {
       stop("numerator_selection must be provided for ", statistic, " statistic.")
     }
@@ -116,6 +153,9 @@ summarywidget <- function(data,
       }
       if (!is.logical(denominator_flag))
         stop("denominator_selection must contain TRUE/FALSE values.")
+      # Handle NA values in denominator_flag
+      denominator_flag <- as.logical(denominator_flag)
+      denominator_flag[is.na(denominator_flag)] <- FALSE
     } else {
       # Use all data as denominator
       denominator_flag <- rep(TRUE, nrow(data))
@@ -172,6 +212,7 @@ summarywidget <- function(data,
     dependencies = crosstalk::crosstalkLibs()
   )
 }
+
 
 
 #' Shiny bindings for summarywidget
