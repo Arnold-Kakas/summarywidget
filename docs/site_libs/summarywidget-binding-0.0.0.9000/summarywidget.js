@@ -26,8 +26,8 @@ HTMLWidgets.widget({
           data.push({
             value: x.data[i],
             key: x.key ? x.key[i] : i,
-            numerator_flag: x.numerator_flag ? x.numerator_flag[i] : null,
-            denominator_flag: x.denominator_flag ? x.denominator_flag[i] : null,
+            numerator_flag: x.numerator_flag ? x.numerator_flag[i] : false,
+            denominator_flag: x.denominator_flag ? x.denominator_flag[i] : false,
             numerator_value: x.numerator_value ? x.numerator_value[i] : null,
             denominator_value: x.denominator_value ? x.denominator_value[i] : null
           });
@@ -41,15 +41,15 @@ HTMLWidgets.widget({
           var value = 0;
           switch (x.settings.statistic) {
             case 'count_rate':
-              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
-              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
+              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag === true; });
+              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag === true; });
               var numeratorCount = numeratorData.length;
               var denominatorCount = denominatorData.length;
               value = denominatorCount === 0 ? 0 : (numeratorCount / denominatorCount * 100);
               break;
             case 'numeric_rate':
-              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
-              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
+              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag === true; });
+              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag === true; });
               var numeratorSum = numeratorData.reduce(function(acc, d) { return acc + d.numerator_value; }, 0);
               var denominatorSum = denominatorData.reduce(function(acc, d) { return acc + d.denominator_value; }, 0);
               value = denominatorSum === 0 ? 0 : (numeratorSum / denominatorSum * 100);
@@ -108,20 +108,23 @@ HTMLWidgets.widget({
 
           // Apply prefix and suffix
           var displayValue = value;
-
-          // For rate statistics, '%' is already appended, so we do not apply the suffix
+          
+          // Always apply prefix if provided
+          if (x.settings.prefix) {
+            displayValue = x.settings.prefix + displayValue;
+          }
+          
+          // For rate statistics, append '%' and skip suffix
           if (x.settings.statistic === 'count_rate' || x.settings.statistic === 'numeric_rate') {
-            displayValue = value + '%';
+            displayValue = displayValue + '%';
+            // Do not apply suffix
           } else {
-            // Apply prefix and suffix if provided
-            if (x.settings.prefix) {
-              displayValue = x.settings.prefix + displayValue;
-            }
+            // Apply suffix if provided
             if (x.settings.suffix) {
               displayValue = displayValue + x.settings.suffix;
             }
           }
-
+          
           el.innerText = displayValue;
         };
 
