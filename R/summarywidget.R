@@ -178,14 +178,13 @@ summarywidget <- function(data,
   
   # Create the widget
   htmlwidgets::createWidget(
-    name = 'summarywidget',
-    x,
-    width = width,
-    height = height,
-    package = 'summarywidget',
-    elementId = elementId,
-    dependencies = crosstalk::crosstalkLibs()
-  )
+  name = 'summarywidget',
+  x,
+  width = width,
+  height = height,
+  package = 'summarywidget',
+  elementId = elementId
+)
 }
 
 
