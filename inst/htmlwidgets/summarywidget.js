@@ -35,10 +35,25 @@ HTMLWidgets.widget({
 
         // Function to update the display
         var update = function(filteredData) {
+
           var values = filteredData.map(function(d) { return d.value; });
 
           var value = 0;
           switch (x.settings.statistic) {
+            case 'count_rate':
+              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
+              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
+              var numeratorCount = numeratorData.length;
+              var denominatorCount = denominatorData.length;
+              value = denominatorCount === 0 ? 0 : (numeratorCount / denominatorCount * 100);
+              break;
+            case 'numeric_rate':
+              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
+              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
+              var numeratorSum = numeratorData.reduce(function(acc, d) { return acc + d.numerator_value; }, 0);
+              var denominatorSum = denominatorData.reduce(function(acc, d) { return acc + d.denominator_value; }, 0);
+              value = denominatorSum === 0 ? 0 : (numeratorSum / denominatorSum * 100);
+              break;
             case 'count':
               value = values.length;
               break;
@@ -66,34 +81,6 @@ HTMLWidgets.widget({
             case 'max':
               value = Math.max(...values);
               break;
-            case 'count_rate':
-              var numeratorCount = 0;
-              var denominatorCount = 0;
-              for (var i = 0; i < filteredData.length; i++) {
-                var d = filteredData[i];
-                if (d.denominator_flag) {
-                  denominatorCount++;
-                  if (d.numerator_flag) {
-                    numeratorCount++;
-                  }
-                }
-              }
-              value = denominatorCount === 0 ? 0 : (numeratorCount / denominatorCount * 100);
-              break;
-            case 'numeric_rate':
-              var numeratorSum = 0;
-              var denominatorSum = 0;
-              for (var i = 0; i < filteredData.length; i++) {
-                var d = filteredData[i];
-                if (d.denominator_flag) {
-                  denominatorSum += d.denominator_value;
-                  if (d.numerator_flag) {
-                    numeratorSum += d.numerator_value;
-                  }
-                }
-              }
-              value = denominatorSum === 0 ? 0 : (numeratorSum / denominatorSum * 100);
-              break;
             default:
               console.error('Invalid statistic specified:', x.settings.statistic);
               return;
@@ -118,11 +105,24 @@ HTMLWidgets.widget({
           if (x.settings.big_mark) {
             value = numberWithSep(value, x.settings.big_mark);
           }
+
+          // Apply prefix and suffix
+          var displayValue = value;
+
+          // For rate statistics, '%' is already appended, so we do not apply the suffix
           if (x.settings.statistic === 'count_rate' || x.settings.statistic === 'numeric_rate') {
-            value = value + '%';
+            displayValue = value + '%';
+          } else {
+            // Apply prefix and suffix if provided
+            if (x.settings.prefix) {
+              displayValue = x.settings.prefix + displayValue;
+            }
+            if (x.settings.suffix) {
+              displayValue = displayValue + x.settings.suffix;
+            }
           }
 
-          el.innerText = value;
+          el.innerText = displayValue;
         };
 
         // Function to get filtered data considering Crosstalk filters and selections
