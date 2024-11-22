@@ -19,83 +19,97 @@ HTMLWidgets.widget({
     return {
       renderValue: function(x) {
 
-        // Prepare data array
+        // Prepare data array with all necessary fields
         var data = [];
-        var i;
-        for (i = 0; i < x.data.length; i++) {
+        for (var i = 0; i < x.data.length; i++) {
           data.push({
             value: x.data[i],
             key: x.key ? x.key[i] : i,
-            numerator_flag: x.numerator_flag ? x.numerator_flag[i] : false,
-            denominator_flag: x.denominator_flag ? x.denominator_flag[i] : false,
+            numerator_flag: x.numerator_flag ? x.numerator_flag[i] === true : false,
+            denominator_flag: x.denominator_flag ? x.denominator_flag[i] === true : false,
             numerator_value: x.numerator_value ? x.numerator_value[i] : null,
             denominator_value: x.denominator_value ? x.denominator_value[i] : null
           });
         }
 
-        // Function to update the display
+        // Function to update the display based on filtered data
         var update = function(filteredData) {
 
+          // Extract values from the filtered data
           var values = filteredData.map(function(d) { return d.value; });
 
-          var value = 0;
+          var value = 0; // Initialize the value to display
+
+          // Compute the statistic based on the selected type
           switch (x.settings.statistic) {
             case 'count_rate':
-              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag === true; });
-              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag === true; });
+              // Filter numerator and denominator data
+              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
+              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
               var numeratorCount = numeratorData.length;
               var denominatorCount = denominatorData.length;
               value = denominatorCount === 0 ? 0 : (numeratorCount / denominatorCount * 100);
               break;
+
             case 'numeric_rate':
-              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag === true; });
-              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag === true; });
-              var numeratorSum = numeratorData.reduce(function(acc, d) { return acc + d.numerator_value; }, 0);
-              var denominatorSum = denominatorData.reduce(function(acc, d) { return acc + d.denominator_value; }, 0);
+              // Filter numerator and denominator data
+              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
+              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
+              // Sum numerator and denominator values
+              var numeratorSum = numeratorData.reduce(function(acc, d) {
+                return acc + (d.numerator_value || 0);
+              }, 0);
+              var denominatorSum = denominatorData.reduce(function(acc, d) {
+                return acc + (d.denominator_value || 0);
+              }, 0);
               value = denominatorSum === 0 ? 0 : (numeratorSum / denominatorSum * 100);
               break;
+
             case 'count':
               value = values.length;
               break;
+
             case 'sum':
               value = values.reduce(function(acc, val) { return acc + val; }, 0);
               break;
+
             case 'mean':
               value = values.reduce(function(acc, val) { return acc + val; }, 0) / values.length;
               break;
+
             case 'distinct_count':
-              value = [...new Set(values)].length;
+              value = new Set(values).size;
               break;
+
             case 'duplicates':
-              const uniqueValues = new Set();
-              const duplicates = new Set();
-              values.forEach(val => {
-                if (uniqueValues.has(val)) duplicates.add(val);
-                else uniqueValues.add(val);
+              var counts = {};
+              values.forEach(function(val) {
+                counts[val] = (counts[val] || 0) + 1;
               });
-              value = duplicates.size;
+              value = Object.values(counts).filter(function(count) { return count > 1; }).length;
               break;
+
             case 'min':
-              value = Math.min(...values);
+              value = Math.min.apply(null, values);
               break;
+
             case 'max':
-              value = Math.max(...values);
+              value = Math.max.apply(null, values);
               break;
+
             default:
               console.error('Invalid statistic specified:', x.settings.statistic);
               return;
           }
 
           // Function to format numbers with thousand separators
-          function numberWithSep(x, bigMark = ",") {
+          function numberWithSep(x, bigMark) {
             if (typeof x !== "string") {
               x = x.toString();
             }
-            var pattern = /(-?\d+)(\d{3})/;
-            while (pattern.test(x)) {
-              x = x.replace(pattern, `$1${bigMark}$2`);
-            }
-            return x;
+            var parts = x.split(".");
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, bigMark);
+            return parts.join(".");
           }
 
           // Apply formatting
@@ -108,12 +122,12 @@ HTMLWidgets.widget({
 
           // Apply prefix and suffix
           var displayValue = value;
-          
+
           // Always apply prefix if provided
           if (x.settings.prefix) {
             displayValue = x.settings.prefix + displayValue;
           }
-          
+
           // For rate statistics, append '%' and skip suffix
           if (x.settings.statistic === 'count_rate' || x.settings.statistic === 'numeric_rate') {
             displayValue = displayValue + '%';
@@ -124,7 +138,8 @@ HTMLWidgets.widget({
               displayValue = displayValue + x.settings.suffix;
             }
           }
-          
+
+          // Update the element's text content
           el.innerText = displayValue;
         };
 
@@ -169,6 +184,7 @@ HTMLWidgets.widget({
 
       resize: function(width, height) {
         // Code to handle resizing if necessary
+        // Currently not needed as the widget displays a single value
       }
 
     };
