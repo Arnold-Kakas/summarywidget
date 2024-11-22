@@ -4,39 +4,42 @@ HTMLWidgets.widget({
 
   factory: function(el, width, height) {
 
-    // Function to filter data based on keys
-    var filterDataByKeys = function(data, keys) {
-      var result = [];
-      var keySet = new Set(keys);
-      for (var i = 0; i < data.length; i++) {
-        if (keySet.has(data[i].key)) {
-          result.push(data[i]);
-        }
-      }
+    // Function to filter an object based on keys
+    var filterKeys = function(obj, keys) {
+      var result = {};
+      keys.forEach(function(k) {
+        if (obj.hasOwnProperty(k))
+          result[k] = obj[k];
+      });
       return result;
     };
 
     return {
       renderValue: function(x) {
 
-        // Prepare data array with all necessary fields
-        var data = [];
-        for (var i = 0; i < x.data.length; i++) {
-          data.push({
+        // Prepare data object with keys
+        var data = {};
+        var i;
+        for (i = 0; i < x.data.length; i++) {
+          var key = x.key ? x.key[i] : i;
+          data[key] = {
             value: x.data[i],
-            key: x.key ? x.key[i] : i,
             numerator_flag: x.numerator_flag ? x.numerator_flag[i] === true : false,
             denominator_flag: x.denominator_flag ? x.denominator_flag[i] === true : false,
             numerator_value: x.numerator_value ? x.numerator_value[i] : null,
             denominator_value: x.denominator_value ? x.denominator_value[i] : null
-          });
+          };
         }
 
         // Function to update the display based on filtered data
-        var update = function(filteredData) {
-
-          // Extract values from the filtered data
-          var values = filteredData.map(function(d) { return d.value; });
+        var update = function(d) {
+          // Convert object to array
+          var dataArray = [];
+          for (var key in d) {
+            if (d.hasOwnProperty(key)) {
+              dataArray.push(d[key]);
+            }
+          }
 
           var value = 0; // Initialize the value to display
 
@@ -44,8 +47,8 @@ HTMLWidgets.widget({
           switch (x.settings.statistic) {
             case 'count_rate':
               // Filter numerator and denominator data
-              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
-              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
+              var numeratorData = dataArray.filter(function(d) { return d.numerator_flag; });
+              var denominatorData = dataArray.filter(function(d) { return d.denominator_flag; });
               var numeratorCount = numeratorData.length;
               var denominatorCount = denominatorData.length;
               value = denominatorCount === 0 ? 0 : (numeratorCount / denominatorCount * 100);
@@ -53,8 +56,8 @@ HTMLWidgets.widget({
 
             case 'numeric_rate':
               // Filter numerator and denominator data
-              var numeratorData = filteredData.filter(function(d) { return d.numerator_flag; });
-              var denominatorData = filteredData.filter(function(d) { return d.denominator_flag; });
+              var numeratorData = dataArray.filter(function(d) { return d.numerator_flag; });
+              var denominatorData = dataArray.filter(function(d) { return d.denominator_flag; });
               // Sum numerator and denominator values
               var numeratorSum = numeratorData.reduce(function(acc, d) {
                 return acc + (d.numerator_value || 0);
@@ -66,35 +69,37 @@ HTMLWidgets.widget({
               break;
 
             case 'count':
-              value = values.length;
+              value = dataArray.length;
               break;
 
             case 'sum':
-              value = values.reduce(function(acc, val) { return acc + val; }, 0);
+              value = dataArray.reduce(function(acc, d) { return acc + d.value; }, 0);
               break;
 
             case 'mean':
-              value = values.reduce(function(acc, val) { return acc + val; }, 0) / values.length;
+              value = dataArray.reduce(function(acc, d) { return acc + d.value; }, 0) / dataArray.length;
               break;
 
             case 'distinct_count':
-              value = new Set(values).size;
+              var uniqueValues = {};
+              dataArray.forEach(function(d) { uniqueValues[d.value] = true; });
+              value = Object.keys(uniqueValues).length;
               break;
 
             case 'duplicates':
               var counts = {};
-              values.forEach(function(val) {
-                counts[val] = (counts[val] || 0) + 1;
+              dataArray.forEach(function(d) {
+                counts[d.value] = (counts[d.value] || 0) + 1;
               });
               value = Object.values(counts).filter(function(count) { return count > 1; }).length;
               break;
 
             case 'min':
-              value = Math.min.apply(null, values);
+              value = Math.min.apply(null, dataArray.map(function(d) { return d.value; }));
               break;
 
             case 'max':
-              value = Math.max.apply(null, values);
+              value = Math.max.apply(null, dataArray.map(function(d) { return d.value; }));
               break;
 
             default:
@@ -143,43 +148,29 @@ HTMLWidgets.widget({
           el.innerText = displayValue;
         };
 
-        // Function to get filtered data considering Crosstalk filters and selections
-        var updateFilteredData = function() {
-          var keys = null;
-          if (ct_filter.filteredKeys && ct_sel.value) {
-            // Intersection of filter and selection
-            keys = ct_filter.filteredKeys.filter(function(k) { return ct_sel.value.includes(k); });
-          } else if (ct_filter.filteredKeys) {
-            keys = ct_filter.filteredKeys;
-          } else if (ct_sel.value) {
-            keys = ct_sel.value;
-          }
-
-          var filteredData;
-          if (keys) {
-            filteredData = filterDataByKeys(data, keys);
-          } else {
-            filteredData = data;
-          }
-
-          update(filteredData);
-        };
-
-        // Set up Crosstalk filters
+        // Set up Crosstalk filter and selection handles
         var ct_filter = new crosstalk.FilterHandle();
         ct_filter.setGroup(x.settings.crosstalk_group);
         ct_filter.on("change", function(e) {
-          updateFilteredData();
+          if (e.value) {
+            update(filterKeys(data, e.value));
+          } else {
+            update(data);
+          }
         });
 
         var ct_sel = new crosstalk.SelectionHandle();
         ct_sel.setGroup(x.settings.crosstalk_group);
         ct_sel.on("change", function(e) {
-          updateFilteredData();
+          if (e.value && e.value.length) {
+            update(filterKeys(data, e.value));
+          } else {
+            update(data);
+          }
         });
 
         // Initial update
-        updateFilteredData();
+        update(data);
       },
 
       resize: function(width, height) {
