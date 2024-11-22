@@ -20,6 +20,8 @@
 #' If NULL, `numerator_column` is used.
 #' @param digits Number of decimal places to display, or NULL to display full precision.
 #' @param big_mark Character used as thousands separator.
+#' @param prefix String to prepend to the value. Default is NULL.
+#' @param suffix String to append to the value. Default is NULL. Not applied for rate statistics.
 #' @param width Width of the widget.
 #' @param height Height of the widget.
 #' @param elementId Element ID for the widget.
@@ -38,6 +40,8 @@ summarywidget <- function(data,
                           denominator_column = NULL,
                           digits = 0,
                           big_mark = " ",
+                          prefix = NULL,
+                          suffix = NULL,
                           width = NULL, height = NULL, elementId = NULL) {
 
   if (crosstalk::is.SharedData(data)) {
@@ -60,13 +64,13 @@ summarywidget <- function(data,
     if (inherits(selection, 'formula')) {
       if (length(selection) != 2L)
         stop("Unexpected two-sided formula: ", deparse(selection))
-      selection = eval(selection[[2]], data, environment(selection))
+      selection <- eval(selection[[2]], data, environment(selection))
     }
 
     if (!is.logical(selection))
       stop("Selection must contain TRUE/FALSE values.")
-    data = data[selection, ]
-    key = key[selection]
+    data <- data[selection, ]
+    key <- key[selection]
   }
 
   # We need to handle numerator and denominator selections
@@ -151,6 +155,8 @@ summarywidget <- function(data,
       statistic = statistic,
       digits = digits,
       big_mark = big_mark,
+      prefix = prefix,
+      suffix = suffix,
       crosstalk_group = group
     )
   )
@@ -166,6 +172,7 @@ summarywidget <- function(data,
     dependencies = crosstalk::crosstalkLibs()
   )
 }
+
 
 #' Shiny bindings for summarywidget
 #'
